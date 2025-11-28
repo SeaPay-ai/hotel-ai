@@ -24,14 +24,14 @@ const hotels = [
     location: "Miami, FL",
     roomType: "Ocean View Suite",
     price: 350,
-    imageUrl: "https://example.com/seaside-resort.jpg"
+    imageUrl: "https://dynamic-media-cdn.tripadvisor.com/media/photo-o/1c/f7/8b/38/exterior.jpg?w=900&h=500&s=1"
   },
   {
     hotelName: "Mountain Retreat",
     location: "Aspen, CO",
     roomType: "Cozy Cabin",
     price: 450,
-    imageUrl: "https://example.com/mountain-retreat.jpg"
+    imageUrl: "https://gallery.streamlinevrs.com/units-gallery/00/07/CD/image_165252947.jpeg"
   }
 ];
 
