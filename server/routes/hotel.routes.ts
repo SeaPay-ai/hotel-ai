@@ -20,32 +20,32 @@ const router = express.Router();
  * Query Parameters:
  * - checkIn (required): Check-in date in YYYY-MM-DD format
  * - checkOut (required): Check-out date in YYYY-MM-DD format
- * - adults (required): Number of adults
- * - children (required): Number of children
+ * - guests (required): Total number of guests
  *
  * @returns Array of available hotels
  *
  * @example
- * GET /api/check-availability?checkIn=2024-01-15&checkOut=2024-01-20&adults=2&children=1
+ * GET /api/check-availability?checkIn=2024-01-15&checkOut=2024-01-20&guests=2
  */
 router.get("/check-availability", (req: Request, res: Response): void => {
-  const { checkIn, checkOut, adults, children } = req.query;
+  const { checkIn, checkOut, guests } = req.query;
 
   // Validate required query parameters
-  if (!checkIn || !checkOut || !adults || !children) {
+  if (!checkIn || !checkOut || !guests) {
     res.status(400).json({
       error:
-        "Missing required query parameters: checkIn, checkOut, adults, children",
+        "Missing required query parameters: checkIn, checkOut, guests",
     });
     return;
   }
 
   try {
+    const guestsNum = parseInt(guests as string, 10);
+
     const availableHotels = checkAvailability(
       checkIn as string,
       checkOut as string,
-      parseInt(adults as string, 10),
-      parseInt(children as string, 10)
+      guestsNum
     );
 
     res.json(availableHotels);
@@ -69,8 +69,7 @@ router.get("/check-availability", (req: Request, res: Response): void => {
  * - hotelName (required): Name of the hotel to reserve
  * - checkIn (required): Check-in date in YYYY-MM-DD format
  * - checkOut (required): Check-out date in YYYY-MM-DD format
- * - adults (required): Number of adults
- * - children (required): Number of children
+ * - guests (required): Total number of guests
  *
  * @returns Reservation confirmation with reservation ID and details
  *
@@ -80,8 +79,7 @@ router.get("/check-availability", (req: Request, res: Response): void => {
  *   "hotelName": "Grand Plaza Hotel",
  *   "checkIn": "2024-01-15",
  *   "checkOut": "2024-01-20",
- *   "adults": 2,
- *   "children": 1,
+ *   "guests": 2
  * }
  */
 router.post("/reserve", (req: Request, res: Response): void => {
@@ -89,31 +87,28 @@ router.post("/reserve", (req: Request, res: Response): void => {
   const requestData: Partial<ReservationRequest> =
     Object.keys(req.body || {}).length > 0 ? req.body : req.query;
 
-  const { hotelName, checkIn, checkOut, adults, children } = requestData;
+  const { hotelName, checkIn, checkOut, guests } = requestData;
 
   // Validate required fields
-  if (!hotelName || !checkIn || !checkOut || !adults || !children) {
+  if (!hotelName || !checkIn || !checkOut || !guests) {
     res.status(400).json({
       error:
-        "Missing required fields: hotelName, checkIn, checkOut, adults, children",
+        "Missing required fields: hotelName, checkIn, checkOut, guests",
     });
     return;
   }
 
   try {
     // Process the reservation
-    // Convert string values to numbers if they come from query params
-    const adultsNum =
-      typeof adults === "string" ? parseInt(adults, 10) : Number(adults);
-    const childrenNum =
-      typeof children === "string" ? parseInt(children, 10) : Number(children);
+    // Convert string value to number if it comes from query params
+    const guestsNum =
+      typeof guests === "string" ? parseInt(guests, 10) : Number(guests);
 
     const reservation = reserveHotel(
       hotelName as string,
       checkIn as string,
       checkOut as string,
-      adultsNum,
-      childrenNum
+      guestsNum
     );
 
     // Return success response with reservation details

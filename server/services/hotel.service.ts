@@ -16,18 +16,16 @@ import type { AvailableHotel, Reservation } from "../types/index.js";
  *
  * @param checkIn - Check-in date (YYYY-MM-DD)
  * @param checkOut - Check-out date (YYYY-MM-DD)
- * @param adults - Number of adults
- * @param children - Number of children
+ * @param guests - Total number of guests
  * @returns Array of available hotels with booking details
  *
  * @example
- * const hotels = checkAvailability('2024-01-15', '2024-01-20', 2, 1);
+ * const hotels = checkAvailability("2024-01-15", "2024-01-20", 2);
  */
 export const checkAvailability = (
   checkIn: string,
   checkOut: string,
-  adults: number,
-  children: number
+  guests: number
 ): AvailableHotel[] => {
   // In a real application, we would query a database using these parameters
   // to find hotels that have availability for the requested dates and capacity.
@@ -38,18 +36,15 @@ export const checkAvailability = (
         (1000 * 60 * 60 * 24)
     ) || 1;
 
-  return HOTELS.map(
-    (hotel): AvailableHotel => ({
-      hotelName: hotel.hotelName,
-      location: hotel.location,
-      roomType: hotel.roomType,
-      price: hotel.price * nights,
-      imageUrl: hotel.imageUrl,
-      dates: `${checkIn} to ${checkOut}`,
-      adults,
-      children,
-    })
-  );
+  return HOTELS.map((hotel): AvailableHotel => ({
+    hotelName: hotel.hotelName,
+    location: hotel.location,
+    roomType: hotel.roomType,
+    price: hotel.price * nights,
+    imageUrl: hotel.imageUrl,
+    dates: `${checkIn} to ${checkOut}`,
+    guests,
+  }));
 };
 
 /**
@@ -61,26 +56,23 @@ export const checkAvailability = (
  * @param hotelName - Name of the hotel to reserve
  * @param checkIn - Check-in date (YYYY-MM-DD)
  * @param checkOut - Check-out date (YYYY-MM-DD)
- * @param adults - Number of adults
- * @param children - Number of children
+ * @param guests - Total number of guests
  * @returns Reservation confirmation object
  * @throws Error if hotel is not found
  *
  * @example
  * const reservation = reserveHotel(
- *   'Grand Plaza Hotel',
- *   '2024-01-15',
- *   '2024-01-20',
- *   2,
- *   1,
+ *   "Grand Plaza Hotel",
+ *   "2024-01-15",
+ *   "2024-01-20",
+ *   2
  * );
  */
 export const reserveHotel = (
   hotelName: string,
   checkIn: string,
   checkOut: string,
-  adults: number,
-  children: number
+  guests: number
 ): Reservation => {
   // Find the hotel in the database
   const hotel = HOTELS.find((h) => h.hotelName === hotelName);
@@ -116,8 +108,7 @@ export const reserveHotel = (
     checkIn,
     checkOut,
     nights,
-    adults,
-    children,
+    guests,
     totalPrice,
     status: "confirmed",
     imageUrl: hotel.imageUrl,

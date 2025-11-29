@@ -20,8 +20,10 @@ export interface Hotel {
  */
 export interface AvailableHotel extends Hotel {
   dates: string;
-  adults: number;
-  children: number;
+  /**
+   * Total number of guests for the booking
+   */
+  guests: number;
 }
 
 /**
@@ -31,8 +33,10 @@ export interface ReservationRequest {
   hotelName: string;
   checkIn: string;
   checkOut: string;
-  adults: number | string;
-  children: number | string;
+  /**
+   * Total number of guests (can be string when coming from query params)
+   */
+  guests: number | string;
   nights?: number;
 }
 
@@ -47,8 +51,10 @@ export interface Reservation {
   checkIn: string;
   checkOut: string;
   nights: number;
-  adults: number;
-  children: number;
+  /**
+   * Total number of guests for this reservation
+   */
+  guests: number;
   totalPrice: number;
   status: "confirmed" | "pending" | "cancelled";
   imageUrl: string;

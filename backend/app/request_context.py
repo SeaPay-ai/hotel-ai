@@ -12,4 +12,3 @@ class RequestContext(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     request: Annotated[Request | None, Field(default=None, exclude=True)]
-    article_id: str | None = None

@@ -1,7 +1,6 @@
-import { ChatKit, useChatKit, Widgets, type Entity } from "@openai/chatkit-react";
+import { ChatKit, useChatKit, Widgets } from "@openai/chatkit-react";
 import clsx from "clsx";
-import { useCallback, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useCallback, useRef } from "react";
 
 import {
   CHATKIT_API_DOMAIN_KEY,
@@ -12,7 +11,6 @@ import {
   getPlaceholder,
 } from "../lib/config";
 import { LORA_SOURCES } from "../lib/fonts";
-import { useTags } from "../hooks/useTags";
 import { useAppStore } from "../store/useAppStore";
 
 export type ChatKit = ReturnType<typeof useChatKit>;
@@ -27,70 +25,23 @@ export function ChatKitPanel({
   className,
 }: ChatKitPanelProps) {
   const chatkitRef = useRef<ReturnType<typeof useChatKit> | null>(null);
-  const [lastActionedArticle, setLastActionedArticle] = useState<string | null>(null);
-  const navigate = useNavigate();
-  const { search, getPreview } = useTags();
 
   const theme = useAppStore((state) => state.scheme);
   const activeThread = useAppStore((state) => state.threadId);
   const setThreadId = useAppStore((state) => state.setThreadId);
-  const articleId = useAppStore((state) => state.articleId);
-
-  const customFetch = useMemo(() => {
-    return async (input: RequestInfo | URL, init?: RequestInit) => {
-      const headers = new Headers(init?.headers ?? {});
-      const currentArticleId = articleId ?? "featured";
-      if (currentArticleId) {
-        headers.set("article-id", currentArticleId);
-      } else {
-        headers.delete("article-id");
-      }
-      return fetch(input, {
-        ...init,
-        headers,
-      });
-    };
-  }, [articleId]);
 
   const handleWidgetAction = useCallback(
     async (
       action: { type: string; payload?: Record<string, unknown> },
       widgetItem: { id: string; widget: Widgets.Card | Widgets.ListView }
     ) => {
-      switch (action.type) {
-        case "open_article": {
-          const id = action.payload?.id;
-          if (typeof id === "string" && id) {
-            navigate(`/article/${id}`);
-            const chatkit = chatkitRef.current;
-
-              if (chatkit) {
-                if (id !== lastActionedArticle) {
-                  await chatkit.sendCustomAction(action, widgetItem.id);
-                  setLastActionedArticle(id);
-                }
-              }
-            }
-            break;
-        }
-      }
+      // Handle custom widget actions if needed in the future
     },
-    [navigate, lastActionedArticle]
-  );
-
-  const handleEntityClick = useCallback(
-    (entity: Entity) => {
-      const rawId = entity.data?.["article_id"];
-      const articleId = typeof rawId === "string" ? rawId.trim() : "";
-      if (articleId) {
-        navigate(`/article/${articleId}`);
-      }
-    },
-    [navigate]
+    []
   );
 
   const chatkit = useChatKit({
-    api: { url: CHATKIT_API_URL, domainKey: CHATKIT_API_DOMAIN_KEY, fetch: customFetch },
+    api: { url: CHATKIT_API_URL, domainKey: CHATKIT_API_DOMAIN_KEY },
     theme: {
       density: "spacious",
       colorScheme: theme,
@@ -118,11 +69,6 @@ export function ChatKitPanel({
     composer: {
       placeholder: getPlaceholder(Boolean(activeThread)),
       tools: TOOL_CHOICES,
-    },
-    entities: {
-      onTagSearch: search,
-      onRequestPreview: getPreview,
-      onClick: handleEntityClick,
     },
     threadItemActions: {
       feedback: false,

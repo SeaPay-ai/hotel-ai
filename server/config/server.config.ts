@@ -147,16 +147,12 @@ export const PAYMENT_ROUTES: PaymentRoutes = {
             type: "string",
             description: "Check-out date (YYYY-MM-DD)",
           },
-          adults: {
+          guests: {
             type: "number",
-            description: "Number of adults",
-          },
-          children: {
-            type: "number",
-            description: "Number of children",
+            description: "Total number of guests",
           },
         },
-        required: ["hotelName", "checkIn", "checkOut", "adults", "children"],
+        required: ["hotelName", "checkIn", "checkOut", "guests"],
       },
 
       // Output schema for API documentation and discovery

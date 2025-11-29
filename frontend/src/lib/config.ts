@@ -12,59 +12,38 @@ export const CHATKIT_API_URL =
 export const CHATKIT_API_DOMAIN_KEY =
   import.meta.env.VITE_CHATKIT_API_DOMAIN_KEY ?? "domain_pk_localhost_dev";
 
-export const ARTICLES_API_URL =
-  import.meta.env.VITE_ARTICLES_API_URL ?? "/articles";
+export const THEME_STORAGE_KEY = "seapay-theme";
 
-export const THEME_STORAGE_KEY = "news-guide-theme";
-
-export const GREETING = "I’m here to help you find the latest news from Foxhollow";
+export const GREETING = "I'm here to help you find and book hotels";
 
 export const STARTER_PROMPTS: StartScreenPrompt[] = [
   {
-    label: "Browse trending stories",
-    prompt: "What's trending right now?",
+    label: "Find hotels",
+    prompt: "Find hotels",
     icon: "globe",
   },
   {
-    label: "Read some gossip",
-    prompt: "Any small-town drama lately?",
+    label: "Check availability",
+    prompt: "Check hotel availability for my dates",
+    icon: "calendar",
+  },
+  {
+    label: "View hotel details",
+    prompt: "Show me available hotels with details",
     icon: "sparkle",
   },
   {
-    label: "Get public works updates",
-    prompt: "What's the latest on public infrastructure projects?",
+    label: "Help with booking",
+    prompt: "Help me make a reservation",
     icon: "lightbulb",
-  },
-  {
-    label: "Summarize this page",
-    prompt: "Give me a summary of this page.",
-    icon: "document",
   },
 ];
 
 export const getPlaceholder = (hasThread: boolean) => {
   return hasThread
-    ? "Ask for related stories"
-    : "Any small-town drama this week?";
+    ? "Ask about hotels or make a reservation"
+    : "Find hotels";
 };
 
-export const TOOL_CHOICES: ToolOption[] = [
-  {
-    id: "event_finder",
-    label: "Event finder",
-    icon: "calendar",
-    placeholderOverride: "Anything happening this weekend?",
-    // @ts-ignore
-    // TODO: add to public API
-    persistent: true,
-  },
-  {
-    id: "puzzle",
-    label: "Coffee break puzzle",
-    shortLabel: "Puzzle",
-    icon: "atom",
-    placeholderOverride: "Give me a puzzle to solve",
-    // @ts-ignore
-    persistent: true,
-  },
-];
+// No custom tool toggles for now; the SeaPay agent decides when to call MCP tools.
+export const TOOL_CHOICES: ToolOption[] = [];

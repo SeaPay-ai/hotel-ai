@@ -13,6 +13,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import type { Request, Response } from "express";
 import { z } from "zod";
 import { checkAvailability } from "../services/hotel.service.js";
+import { SERVER_CONFIG } from "../config/server.config.js";
 
 /**
  * Create and configure the MCP server instance
@@ -34,23 +35,104 @@ export const createMcpServer = (): McpServer => {
       inputSchema: z.object({
         checkIn: z.string().describe("Check-in date (YYYY-MM-DD)."),
         checkOut: z.string().describe("Check-out date (YYYY-MM-DD)."),
-        adults: z.number().describe("Number of adults."),
-        children: z.number().describe("Number of children."),
+        guests: z.number().describe("Total number of guests."),
       }),
     },
-    async ({ checkIn, checkOut, adults, children }) => {
-      const availableHotels = checkAvailability(
-        checkIn,
-        checkOut,
-        adults,
-        children
-      );
+    async ({ checkIn, checkOut, guests }) => {
+      const availableHotels = checkAvailability(checkIn, checkOut, guests);
 
       return {
         content: [
           { type: "text", text: JSON.stringify(availableHotels, null, 2) },
         ],
       };
+    }
+  );
+
+  // Register the reserve tool
+  // This allows AI agents to make hotel reservations
+  // The tool implementation calls the HTTP /api/reserve endpoint so that
+  // x402 payment middleware can protect the reservation flow.
+  mcpServer.registerTool(
+    "reserve",
+    {
+      description:
+        "Reserves a hotel room. Creates a reservation for the specified hotel and dates. Returns a reservation confirmation with reservation ID and details.",
+      inputSchema: z.object({
+        hotelName: z
+          .string()
+          .describe(
+            "Name of the hotel to reserve. Must match one of the available hotels exactly."
+          ),
+        checkIn: z.string().describe("Check-in date (YYYY-MM-DD)."),
+        checkOut: z.string().describe("Check-out date (YYYY-MM-DD)."),
+        guests: z.number().describe("Total number of guests."),
+      }),
+    },
+    async ({ hotelName, checkIn, checkOut, guests }) => {
+      try {
+        // Call the payment-protected REST API endpoint so that x402
+        // can enforce payment (and potentially return HTTP 402).
+        const response = await (globalThis as any).fetch(
+          `http://localhost:${SERVER_CONFIG.PORT}/api/reserve`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              hotelName,
+              checkIn,
+              checkOut,
+              guests,
+            }),
+          }
+        );
+
+        let data: unknown = null;
+        try {
+          data = await response.json();
+        } catch {
+          // If the response is not JSON, keep data as null
+        }
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  success: response.ok,
+                  status: response.status,
+                  body: data,
+                },
+                null,
+                2
+              ),
+            },
+          ],
+          isError: !response.ok,
+        };
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : "Unknown error occurred";
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  success: false,
+                  error: errorMessage,
+                },
+                null,
+                2
+              ),
+            },
+          ],
+          isError: true,
+        };
+      }
     }
   );
 
