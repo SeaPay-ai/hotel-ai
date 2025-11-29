@@ -20,10 +20,7 @@ type ChatKitPanelProps = {
   className?: string;
 };
 
-export function ChatKitPanel({
-  onChatKitReady,
-  className,
-}: ChatKitPanelProps) {
+export function ChatKitPanel({ onChatKitReady, className }: ChatKitPanelProps) {
   const chatkitRef = useRef<ReturnType<typeof useChatKit> | null>(null);
 
   const theme = useAppStore((state) => state.scheme);
@@ -35,7 +32,45 @@ export function ChatKitPanel({
       action: { type: string; payload?: Record<string, unknown> },
       widgetItem: { id: string; widget: Widgets.Card | Widgets.ListView }
     ) => {
-      // Handle custom widget actions if needed in the future
+      const chatkit = chatkitRef.current;
+      if (!chatkit) {
+        return;
+      }
+
+      switch (action.type) {
+        case "select_hotel":
+        case "hotels.select_hotel": {
+          // Support both old and new action format
+          const hotelId = action.payload?.id as string | undefined;
+          const hotelName = action.payload?.hotelName as string | undefined;
+          const options = action.payload?.options as
+            | Array<{ id: string; hotelName: string }>
+            | undefined;
+
+          let selectedHotelName: string | undefined;
+
+          if (hotelName) {
+            // Old format with hotelName directly
+            selectedHotelName = hotelName;
+          } else if (hotelId && options) {
+            // New format: find hotel by id in options
+            const selectedHotel = options.find((h) => h.id === hotelId);
+            selectedHotelName = selectedHotel?.hotelName;
+          }
+
+          if (selectedHotelName) {
+            // Send the custom action - the backend will handle it
+            // The action payload contains the hotel info for the agent to process
+            await chatkit.sendCustomAction(action, widgetItem.id);
+          }
+          break;
+        }
+        case "hotels.more_hotels": {
+          // Send the custom action - the backend will handle it
+          await chatkit.sendCustomAction(action, widgetItem.id);
+          break;
+        }
+      }
     },
     []
   );
@@ -88,7 +123,7 @@ export function ChatKitPanel({
 
   return (
     <div className={clsx("relative h-full w-full overflow-hidden", className)}>
-      <ChatKit control={chatkit.control} className="block h-full w-full" />
+      <ChatKit control={chatkit.control} className='block h-full w-full' />
     </div>
   );
 }

@@ -28,13 +28,15 @@ export const HOTELS: Hotel[] = [
     location: "Miami, FL",
     roomType: "Ocean View Suite",
     price: 0.02,
-    imageUrl: "https://example.com/seaside-resort.jpg",
+    imageUrl:
+      "https://cf.bstatic.com/xdata/images/hotel/max1024x768/390822692.jpg?k=c34015ae993300be2c9cee1b70de695a451a40f61471028096c59be44abe59c9&o=",
   },
   {
     hotelName: "Mountain Retreat",
     location: "Aspen, CO",
     roomType: "Cozy Cabin",
     price: 0.03,
-    imageUrl: "https://example.com/mountain-retreat.jpg",
+    imageUrl:
+      "https://media.vrbo.com/lodging/34000000/33100000/33092200/33092154/dcef192f.jpg?impolicy=resizecrop&rw=1200&ra=fit",
   },
 ];

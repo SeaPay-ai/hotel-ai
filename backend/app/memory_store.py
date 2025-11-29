@@ -1,12 +1,12 @@
 """
 Simple in-memory store compatible with the ChatKit Store interface.
-A production app would implement this using a persistant database.
+A production app would implement this using a persistent database.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List
 
 from chatkit.store import NotFoundError, Store
@@ -96,7 +96,7 @@ class MemoryStore(Store[RequestContext]):
         state = self._threads.get(thread_id)
         if state is None:
             state = _ThreadState(
-                thread=ThreadMetadata(id=thread_id, created_at=datetime.utcnow()),
+                thread=ThreadMetadata(id=thread_id, created_at=datetime.now(timezone.utc)),
                 items=[],
             )
             self._threads[thread_id] = state
@@ -115,8 +115,27 @@ class MemoryStore(Store[RequestContext]):
         context: RequestContext,
     ) -> Page[ThreadItem]:
         items = [item.model_copy(deep=True) for item in self._items(thread_id)]
+        
+        def get_created_at(item: ThreadItem) -> datetime:
+            """Get created_at with timezone awareness, defaulting to UTC-aware now."""
+            created_at = getattr(item, "created_at", None)
+            if created_at is None:
+                return datetime.now(timezone.utc)
+            # If it's a string, parse it
+            if isinstance(created_at, str):
+                try:
+                    created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                except (ValueError, AttributeError):
+                    return datetime.now(timezone.utc)
+            # If it's timezone-naive, make it UTC-aware
+            if isinstance(created_at, datetime):
+                if created_at.tzinfo is None:
+                    created_at = created_at.replace(tzinfo=timezone.utc)
+                return created_at
+            return datetime.now(timezone.utc)
+        
         items.sort(
-            key=lambda item: getattr(item, "created_at", datetime.utcnow()),
+            key=get_created_at,
             reverse=(order == "desc"),
         )
 

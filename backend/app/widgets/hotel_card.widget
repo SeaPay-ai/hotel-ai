@@ -1,0 +1,212 @@
+{
+  "version": "1.0",
+  "name": "Hotel suggestions",
+  "template": "{\"type\": \"ListView\", \"children\": [{%- for hotel in items -%}{\"type\": \"ListViewItem\", \"key\": {{ (hotel.id or hotel.hotelName) | tojson }}, \"onClickAction\": {% if selected %}null{% else %}{\"type\":\"hotels.select_hotel\",\"handler\":\"client\",\"payload\":{\"id\":{{ (hotel.id or hotel.hotelName) | tojson }},\"options\":{{ items | tojson }}}}{% endif %}, \"children\": [{\"type\": \"Card\", \"size\": \"md\", \"padding\": 0, \"children\": [{\"type\": \"Image\", \"src\": {{ (hotel.image) | tojson }}, \"alt\": {{ (hotel.hotelName ~ \" room\") | tojson }}, \"height\": 180, \"fit\": \"cover\", \"flush\": true}, {\"type\": \"Col\", \"gap\": 2, \"padding\": {\"x\": 4, \"y\": 1}, \"children\": [{\"type\": \"Row\", \"align\": \"center\", \"children\": [{\"type\": \"Title\", \"value\": {{ (hotel.hotelName) | tojson }}, \"size\": \"md\"}, {\"type\": \"Spacer\"}, {\"type\": \"Icon\", \"name\": \"{% if selected == (hotel.id or hotel.hotelName) %}check{% else %}dot{% endif %}\", \"size\": \"sm\", \"color\": \"{% if selected == (hotel.id or hotel.hotelName) %}success{% elif selected %}gray-200{% else %}gray-300{% endif %}\"}]}, {\"type\": \"Row\", \"gap\": 2, \"align\": \"center\", \"children\": [{\"type\": \"Icon\", \"name\": \"map-pin\", \"size\": \"sm\", \"color\": \"secondary\"}, {\"type\": \"Text\", \"value\": {{ (hotel.location) | tojson }}, \"size\": \"sm\", \"color\": \"secondary\", \"maxLines\": 1}, {\"type\": \"Spacer\"}, {\"type\": \"Text\", \"value\": {{ (hotel.roomType) | tojson }}, \"size\": \"sm\"}]}, {\"type\": \"Row\", \"gap\": 2, \"align\": \"center\", \"children\": [{\"type\": \"Icon\", \"name\": \"calendar\", \"size\": \"sm\", \"color\": \"secondary\"}, {\"type\": \"Text\", \"value\": {{ (hotel.dates) | tojson }}, \"size\": \"sm\", \"color\": \"secondary\", \"maxLines\": 1}, {\"type\": \"Spacer\"}, {\"type\": \"Text\", \"value\": {{ (hotel.pricePerNight ~ \"/night\") | tojson }}, \"size\": \"sm\", \"weight\": \"semibold\", \"color\": \"emphasis\"}]}]}]}]}{%- if not loop.last -%},{%- endif -%}{%- endfor -%}, {\"type\": \"ListViewItem\", \"key\": \"more\", \"children\": [{\"type\": \"Button\", \"onClickAction\": {\"type\": \"hotels.more_hotels\", \"handler\": \"client\", \"payload\": {}}, \"variant\": \"outline\", \"color\": \"discovery\", \"size\": \"lg\", \"pill\": true, \"block\": true, \"label\": \"Show more hotels\", \"iconEnd\": \"sparkle\", \"disabled\": {{ (selected is not none) | tojson }}}]}]}",
+  "jsonSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "items": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "hotelName": {
+              "type": "string",
+              "minLength": 1
+            },
+            "location": {
+              "type": "string",
+              "minLength": 1
+            },
+            "roomType": {
+              "type": "string",
+              "minLength": 1
+            },
+            "dates": {
+              "type": "string",
+              "minLength": 1
+            },
+            "pricePerNight": {
+              "type": "string",
+              "minLength": 1
+            },
+            "image": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          "required": [
+            "id",
+            "hotelName",
+            "location",
+            "roomType",
+            "dates",
+            "pricePerNight",
+            "image"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "selected": {
+        "anyOf": [
+          {
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "required": [
+      "items",
+      "selected"
+    ],
+    "additionalProperties": false
+  },
+  "outputJsonPreview": {
+    "type": "ListView",
+    "children": [
+      {
+        "type": "ListViewItem",
+        "key": "grand_plaza",
+        "onClickAction": {
+          "type": "hotels.select_hotel",
+          "handler": "client",
+          "payload": {
+            "id": "grand_plaza",
+            "options": [
+              {
+                "id": "grand_plaza",
+                "hotelName": "Grand Plaza Hotel",
+                "location": "San Francisco, CA",
+                "roomType": "Deluxe King",
+                "dates": "Dec 10–12 · 2 nights",
+                "pricePerNight": "$210",
+                "image": "https://example.com/grand-plaza.jpg"
+              }
+            ]
+          }
+        },
+        "children": [
+          {
+            "type": "Card",
+            "size": "md",
+            "padding": 0,
+            "children": [
+              {
+                "type": "Image",
+                "src": "https://example.com/grand-plaza.jpg",
+                "alt": "Grand Plaza Hotel room",
+                "height": 180,
+                "fit": "cover",
+                "flush": true
+              },
+              {
+                "type": "Col",
+                "gap": 2,
+                "padding": {
+                  "x": 4,
+                  "y": 1
+                },
+                "children": [
+                  {
+                    "type": "Title",
+                    "value": "Grand Plaza Hotel",
+                    "size": "md"
+                  },
+                  {
+                    "type": "Row",
+                    "gap": 2,
+                    "align": "center",
+                    "children": [
+                      {
+                        "type": "Icon",
+                        "name": "map-pin",
+                        "size": "sm",
+                        "color": "secondary"
+                      },
+                      {
+                        "type": "Text",
+                        "value": "San Francisco, CA",
+                        "size": "sm",
+                        "color": "secondary",
+                        "maxLines": 1
+                      },
+                      {
+                        "type": "Spacer"
+                      },
+                      {
+                        "type": "Text",
+                        "value": "Deluxe King",
+                        "size": "sm"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "Row",
+                    "gap": 2,
+                    "align": "center",
+                    "children": [
+                      {
+                        "type": "Icon",
+                        "name": "calendar",
+                        "size": "sm",
+                        "color": "secondary"
+                      },
+                      {
+                        "type": "Text",
+                        "value": "Dec 10–12 · 2 nights",
+                        "size": "sm",
+                        "color": "secondary",
+                        "maxLines": 1
+                      },
+                      {
+                        "type": "Spacer"
+                      },
+                      {
+                        "type": "Text",
+                        "value": "$210/night",
+                        "size": "sm",
+                        "weight": "semibold",
+                        "color": "emphasis"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "ListViewItem",
+        "key": "more",
+        "children": [
+          {
+            "type": "Button",
+            "onClickAction": {
+              "type": "hotels.more_hotels",
+              "handler": "client",
+              "payload": {}
+            },
+            "variant": "outline",
+            "color": "discovery",
+            "size": "lg",
+            "pill": true,
+            "block": true,
+            "label": "Show more hotels",
+            "iconEnd": "sparkle",
+            "disabled": false
+          }
+        ]
+      }
+    ]
+  }
+}

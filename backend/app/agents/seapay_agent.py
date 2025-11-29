@@ -12,14 +12,19 @@ This agent provides a hotel booking workflow that talks to the SeaPay MCP server
 
 from __future__ import annotations
 
-from typing import Annotated
+import logging
+from typing import Annotated, Any
 
-from agents import Agent, HostedMCPTool, ModelSettings
+from agents import Agent, HostedMCPTool, ModelSettings, RunContextWrapper, function_tool
 from chatkit.agents import AgentContext
 from pydantic import BaseModel, ConfigDict, Field
 
 from ..memory_store import MemoryStore
 from ..request_context import RequestContext
+from ..widgets.hotel_card_widget import build_hotel_card_widget
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 class SeaPayContext(AgentContext):
@@ -31,8 +36,10 @@ class SeaPayContext(AgentContext):
     request_context: Annotated[RequestContext, Field(exclude=True, default_factory=RequestContext)]
 
 
-class HotelOption(BaseModel):
-    """Represents a single hotel option returned from MCP."""
+class HotelData(BaseModel):
+    """Hotel data model for widget display (strict schema compatible)."""
+
+    model_config = ConfigDict(extra="forbid")
 
     hotelName: str
     location: str
@@ -49,7 +56,7 @@ class SeaPayBookingState(BaseModel):
     checkin_date: str | None = None  # YYYY-MM-DD
     checkout_date: str | None = None  # YYYY-MM-DD
     guests: int | None = None
-    hotels: list[HotelOption] = Field(default_factory=list)
+    hotels: list[HotelData] = Field(default_factory=list)
     selected_hotel: str | None = None
     payment_required: bool = False
     reservation_created: bool = False
@@ -72,6 +79,53 @@ seapay_mcp_tool = HostedMCPTool(
 )
 
 
+@function_tool(
+    description_override=(
+        "Display hotel search results as visual cards. "
+        "Call this after receiving hotel options from check_availability. "
+        "Takes a list of hotel objects with hotelName, location, dates, roomType, price, and optional imageUrl."
+    )
+)
+async def show_hotel_cards(
+    ctx: RunContextWrapper[SeaPayContext],
+    hotels: list[HotelData],
+) -> dict[str, Any]:
+    """
+    Display hotel search results as visual card widgets.
+    
+    Args:
+        hotels: List of hotel data objects with hotelName, location, dates, roomType, price, and optional imageUrl
+    """
+    logger.info("[TOOL CALL] show_hotel_cards: %s hotels", len(hotels))
+    
+    if not hotels:
+        return {"message": "No hotels to display", "count": 0}
+    
+    try:
+        # Convert Pydantic models to dicts for widget builder
+        hotel_dicts = [hotel.model_dump() for hotel in hotels]
+        
+        # Build a single ListView widget with all hotels
+        widget = build_hotel_card_widget(hotel_dicts, selected=None)
+        
+        # Stream the widget to the chat
+        hotel_names = ", ".join([hotel.hotelName for hotel in hotels[:3]])
+        if len(hotels) > 3:
+            hotel_names += f" and {len(hotels) - 3} more"
+        await ctx.context.stream_widget(widget, copy_text=f"Found {len(hotels)} hotel(s): {hotel_names}")
+        
+        return {
+            "message": f"Displayed {len(hotels)} hotel(s) in a list",
+            "count": len(hotels),
+        }
+    except Exception as e:
+        logger.error("[ERROR] Failed to build hotel list widget: %s", e)
+        return {
+            "message": f"Error displaying hotels: {str(e)}",
+            "count": 0,
+        }
+
+
 SEAPAY_INSTRUCTIONS = """
 You are SeaPay, a hotel booking assistant for a crypto-enabled hotel search
 platform.
@@ -88,14 +142,12 @@ Your end-to-end workflow:
 3. When you have all required booking info, call the MCP tool
    `check_availability` to fetch real hotel options. Never invent hotels,
    locations, prices, or dates.
-4. Present 3–6 hotel options:
-   - Name, location
-   - Dates and room type
-   - Price (in USDC or dollars)
-   - Any image/description if available
-   Use a concise, skimmable list.
-5. Ask the user which hotel they want to reserve. Accept either the hotel
-   name or a clear index (e.g. “#2”).
+4. IMMEDIATELY after calling check_availability and receiving hotel results,
+   call the `show_hotel_cards` tool with the list of hotels to display them
+   as visual cards. This makes it easier for users to browse and compare options.
+5. After displaying the hotel cards, present a brief text summary of the options
+   and ask the user which hotel they want to reserve. Accept either the hotel
+   name or a clear index (e.g. "#2").
 6. Once the user clearly chooses a hotel, confirm the choice and then call the
    MCP tool `reserve` with the chosen hotel and booking details.
 7. If the reserve call succeeds:
@@ -113,6 +165,8 @@ Your end-to-end workflow:
 General rules:
 - ALWAYS use MCP tools (`check_availability`, `reserve`) for any hotel
   availability, pricing, or reservation details.
+- ALWAYS call `show_hotel_cards` immediately after receiving results from
+  `check_availability` to display hotels visually.
 - NEVER make up hotel names, locations, dates, prices, or availability.
 - Keep responses short, friendly, and focused on the next action the user
   should take.
@@ -125,7 +179,7 @@ seapay_agent = Agent[SeaPayContext](
     model="gpt-4.1-mini",
     name="SeaPay Hotel Booking Agent",
     instructions=SEAPAY_INSTRUCTIONS,
-    tools=[seapay_mcp_tool],
+    tools=[seapay_mcp_tool, show_hotel_cards],
     model_settings=ModelSettings(
         store=True,
     ),

@@ -4,6 +4,8 @@ SeaPayServer implements the ChatKitServer interface for the SeaPay hotel booking
 
 from __future__ import annotations
 
+import uuid
+from datetime import datetime, timezone
 from typing import Any, AsyncIterator
 
 from agents import Agent, Runner
@@ -11,13 +13,13 @@ from chatkit.agents import stream_agent_response
 from chatkit.server import ChatKitServer
 from chatkit.types import (
     Action,
-    Attachment,
+    ThreadItem,
     ThreadMetadata,
     ThreadStreamEvent,
     UserMessageItem,
     WidgetItem,
 )
-from openai.types.responses import ResponseInputContentParam
+from pydantic import TypeAdapter
 
 from .agents.seapay_agent import SeaPayContext, seapay_agent
 from .memory_store import MemoryStore
@@ -56,7 +58,6 @@ class SeaPayServer(ChatKitServer[RequestContext]):
 
         async for event in stream_agent_response(agent_context, result):
             yield event
-        return
 
     async def action(
         self,
@@ -65,13 +66,82 @@ class SeaPayServer(ChatKitServer[RequestContext]):
         sender: WidgetItem | None,
         context: RequestContext,
     ) -> AsyncIterator[ThreadStreamEvent]:
-        # Handle custom actions if needed in the future
-        return
+        """
+        Handle custom widget actions.
 
-    async def to_message_content(self, _input: Attachment) -> ResponseInputContentParam:
+        For hotel selection actions, create a user message and process it through the agent.
+        """
+        action_type = action.type
+        payload = action.payload or {}
+
+        # Handle hotel selection actions
+        if action_type in ("select_hotel", "hotels.select_hotel"):
+            hotel_id = payload.get("id")
+            hotel_name = payload.get("hotelName")
+            options = payload.get("options", [])
+
+            # Find hotel name from options if not directly provided
+            if not hotel_name and hotel_id and isinstance(options, list):
+                for hotel in options:
+                    if isinstance(hotel, dict) and hotel.get("id") == hotel_id:
+                        hotel_name = hotel.get("hotelName")
+                        break
+
+            if hotel_name:
+                user_message = f"I want to reserve {hotel_name}"
+                async for event in self._process_user_message(thread, user_message, context):
+                    yield event
+                return
+
+        # Handle "show more hotels" action
+        elif action_type == "hotels.more_hotels":
+            user_message = "Show me more hotels"
+            async for event in self._process_user_message(thread, user_message, context):
+                yield event
+            return
+
+    async def to_message_content(self, _input: Any) -> Any:
+        """File attachments are not supported."""
         raise RuntimeError("File attachments are not supported in this demo.")
 
     # -- Helpers ----------------------------------------------------
+    async def _process_user_message(
+        self,
+        thread: ThreadMetadata,
+        message_text: str,
+        context: RequestContext,
+    ) -> AsyncIterator[ThreadStreamEvent]:
+        """
+        Create a user message from text and process it through the agent.
+
+        Args:
+            thread: The thread metadata
+            message_text: The user message text
+            context: The request context
+
+        Yields:
+            ThreadStreamEvent: Events from processing the message
+        """
+        user_item_dict: UserMessageItem = {
+            "type": "user_message",
+            "id": str(uuid.uuid4()),
+            "role": "user",
+            "content": [{"type": "input_text", "text": message_text}],
+            "thread_id": thread.id,
+            "created_at": datetime.now(timezone.utc),
+            "inference_options": {},
+        }
+        # Convert dict to ThreadItem using TypeAdapter (since ThreadItem is a Union)
+        thread_item_adapter = TypeAdapter(ThreadItem)
+        user_item = thread_item_adapter.validate_python(user_item_dict)
+
+        # Save the message to the store
+        await self.store.add_thread_item(thread.id, user_item, context)
+
+        # Process the message through the agent
+        async for event in self.respond(thread, user_item, context):
+            yield event
+
     def _select_agent(
         self,
         thread: ThreadMetadata,
