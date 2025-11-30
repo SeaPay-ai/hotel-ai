@@ -89,7 +89,33 @@ class SeaPayServer(ChatKitServer[RequestContext]):
 
             if hotel_name:
                 user_message = f"I want to reserve {hotel_name}"
-                async for event in self._process_user_message(thread, user_message, context):
+                # Explicitly log the user's selection to the chat before processing
+                user_item_dict: UserMessageItem = {
+                    "type": "user_message",
+                    "id": str(uuid.uuid4()),
+                    "role": "user",
+                    "content": [{"type": "input_text", "text": user_message}],
+                    "thread_id": thread.id,
+                    "created_at": datetime.now(timezone.utc),
+                    "inference_options": {},
+                }
+                thread_item_adapter = TypeAdapter(ThreadItem)
+                user_item = thread_item_adapter.validate_python(user_item_dict)
+                
+                # Save the message to the store
+                await self.store.add_thread_item(thread.id, user_item, context)
+                
+                # Yield the user message event so it appears in the chat
+                # Use TypeAdapter to properly construct the Pydantic model
+                event_adapter = TypeAdapter(ThreadStreamEvent)
+                event = event_adapter.validate_python({
+                    "type": "thread.item.added",
+                    "item": user_item,
+                })
+                yield event
+                
+                # Now process the message through the agent
+                async for event in self.respond(thread, user_item, context):
                     yield event
                 return
 

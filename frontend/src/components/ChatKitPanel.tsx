@@ -95,7 +95,7 @@ export function ChatKitPanel({ onChatKitReady, className }: ChatKitPanelProps) {
         fontFamily: "Lora, serif",
         fontSources: LORA_SOURCES,
       },
-      radius: "sharp",
+      radius: "round",
     },
     startScreen: {
       greeting: GREETING,

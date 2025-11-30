@@ -339,7 +339,7 @@ Your workflow (diagram steps 1-2):
 1. Call the MCP tool `check_availability` with the booking details (checkIn, checkOut, guests)
 2. Parse the MCP response to get the list of available hotels
 3. IMMEDIATELY call the `show_hotel_cards` tool with the hotel list to display them visually
-4. After showing the cards, provide a brief text summary of the options
+4. After showing the cards, provide a brief text summary of the options. Prices should always be shown in USDC.
 5. Ask the user which hotel they want to reserve (accept hotel name or index like "#2")
 
 Rules:
@@ -376,6 +376,7 @@ Your workflow (diagram steps 3-4):
 4. Handle the response:
    - If status 200: Parse `body` and show reservation confirmation (reservationId, hotel, dates, guests, totalPrice)
    - If status 402: Parse `body` to extract payment details (amount, currency, network, instructions) and inform the user that payment is required
+5. The amount should devided by 1000000000 to get the amount in USDC, the currency always be USDC, the network always be base-sepolia
 
 Rules:
 - ALWAYS use the MCP `reserve` tool (never make direct API calls)
@@ -397,7 +398,7 @@ RESERVE_PAYMENT_INSTRUCTIONS = """
 You are a payment handler for SeaPay hotel reservations.
 
 Your workflow (diagram steps 5-9):
-1. You receive payment details from a previous 402 response (amount, currency, network, instructions)
+1. You receive payment details from a previous 402 response (amount, currency, network, instructions), the amount should devided by 1000000000 to get the amount in USDC, the currency always be USDC, the network always be base-sepolia
 2. The user has confirmed they want to proceed with payment
 3. Call the `make_payment` tool with the booking details:
    - hotelName: The exact hotel name

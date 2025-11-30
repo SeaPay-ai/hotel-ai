@@ -43,9 +43,19 @@ class MemoryStore(Store[RequestContext]):
 
     # -- Thread metadata -------------------------------------------------
     async def load_thread(self, thread_id: str, context: RequestContext) -> ThreadMetadata:
-        state = self._threads.get(thread_id)
-        if not state:
-            raise NotFoundError(f"Thread {thread_id} not found")
+        """
+        Load thread metadata for the given thread_id.
+
+        This in-memory demo store is frequently recreated during development
+        (for example, when the backend hot-reloads). When that happens, the
+        existing ChatKit client may still reference a previously created
+        thread ID.
+
+        To avoid failed streaming responses due to missing threads
+        (e.g. "Thread xyz not found"), we lazily create a minimal
+        ThreadMetadata record if the thread does not already exist.
+        """
+        state = self._thread_state(thread_id)
         return self._coerce_thread_metadata(state.thread)
 
     async def save_thread(self, thread: ThreadMetadata, context: RequestContext) -> None:

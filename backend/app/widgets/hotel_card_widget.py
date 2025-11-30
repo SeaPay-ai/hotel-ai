@@ -49,7 +49,7 @@ def build_hotel_card_widget(hotels: list[dict[str, Any]], selected: str | None =
             "location": hotel.get("location", ""),
             "roomType": hotel.get("roomType", ""),
             "dates": hotel.get("dates", ""),
-            "pricePerNight": price_str,
+            "pricePerNight": "$" + price_str,
             "image": image_url,
         })
     
