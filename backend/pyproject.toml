@@ -10,6 +10,10 @@ dependencies = [
     "openai>=1.40",
     "openai-chatkit>=1.4.0,<2",
     "jinja2",
+    "httpx",
+    "python-dotenv",
+    "x402",
+    "eth-account",
 ]
 
 [project.optional-dependencies]

@@ -2,10 +2,18 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from chatkit.server import StreamingResult
+from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.responses import Response, StreamingResponse
 from starlette.responses import JSONResponse
+
+# Load environment variables from .env file
+# Look for .env in the backend directory (parent of app/)
+env_path = Path(__file__).parent.parent / ".env"
+load_dotenv(env_path)
 
 from .request_context import RequestContext
 from .server import SeaPayServer, create_chatkit_server
