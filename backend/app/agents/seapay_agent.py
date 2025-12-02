@@ -25,6 +25,7 @@ import os
 from ..memory_store import MemoryStore
 from ..request_context import RequestContext
 from ..widgets.hotel_card_widget import build_hotel_card_widget
+from ..widgets.quick_approve_reject_widget import build_approval_widget
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -95,7 +96,8 @@ mcp = HostedMCPTool(
             "check_availability",
             "reserve",
         ],
-        # In the chatbox flow we want the agent to be able to call tools freely.
+        # We handle approval manually via the show_approval_request widget,
+        # so we don't need the MCP framework's built-in approval system.
         "require_approval": "never",
     }
 )
@@ -269,6 +271,49 @@ async def show_hotel_cards(
         }
 
 
+@function_tool(
+    description_override=(
+        "Show an approval request widget before making tool calls that require user approval. "
+        "This widget displays a card with approve/reject buttons. "
+        "Takes a title and description explaining what action requires approval."
+    )
+)
+async def show_approval_request(
+    ctx: RunContextWrapper[SeaPayContext],
+    title: str,
+    description: str,
+) -> dict[str, Any]:
+    """
+    Display an approval request widget with approve/reject actions.
+    
+    This widget should be shown before making tool calls that require user approval,
+    such as MCP tool calls for checking availability or making reservations.
+    
+    Args:
+        title: The title text for the approval request (e.g., "Approve hotel search?")
+        description: Description explaining what action requires approval
+    """
+    logger.info("[TOOL CALL] show_approval_request: %s - %s", title, description)
+    
+    try:
+        # Build the approval widget
+        widget = build_approval_widget(title=title, description=description)
+        
+        # Stream the widget to the chat
+        await ctx.context.stream_widget(widget, copy_text=f"{title}: {description}")
+        
+        return {
+            "message": "Approval request displayed",
+            "title": title,
+            "description": description,
+        }
+    except Exception as e:
+        logger.error("[ERROR] Failed to build approval widget: %s", e)
+        return {
+            "message": f"Error displaying approval request: {str(e)}",
+        }
+
+
 # ============================================================================
 # Specialized Agents for Workflow Steps
 # ============================================================================
@@ -336,13 +381,20 @@ CHECK_AVAILABILITY_INSTRUCTIONS = """
 You are a hotel availability checker for SeaPay.
 
 Your workflow (diagram steps 1-2):
-1. Call the MCP tool `check_availability` with the booking details (checkIn, checkOut, guests)
-2. Parse the MCP response to get the list of available hotels
-3. IMMEDIATELY call the `show_hotel_cards` tool with the hotel list to display them visually
-4. After showing the cards, provide a brief text summary of the options. Prices should always be shown in USDC.
-5. Ask the user which hotel they want to reserve (accept hotel name or index like "#2")
+1. BEFORE calling the MCP tool, call `show_approval_request` with:
+   - title: "Proceed with hotel search?"
+   - description: A clear description of what you're about to search (e.g., "I'm about to search for available hotels in [destination] for [checkIn] to [checkOut] with [guests] guests")
+2. After showing the approval widget, wait for the user's response
+3. If the user approves (says "I approve", "yes", "proceed", etc.), immediately call the MCP tool `check_availability` with the booking details (checkIn, checkOut, guests)
+4. If the user rejects (says "I reject", "no", "cancel", etc.), acknowledge their decision politely and end the conversation (e.g., "I understand. If you change your mind, feel free to ask me to search again.")
+5. Parse the MCP response to get the list of available hotels
+6. IMMEDIATELY call the `show_hotel_cards` tool with the hotel list to display them visually
+7. After showing the cards, provide a brief text summary of the options. Prices should always be shown in USDC.
+8. Ask the user which hotel they want to reserve (accept hotel name or index like "#2")
 
 Rules:
+- ALWAYS call `show_approval_request` before calling MCP `check_availability`
+- If user rejects, acknowledge and end the conversation gracefully
 - ALWAYS call `show_hotel_cards` immediately after receiving hotel results from MCP
 - NEVER invent hotels, prices, or availability - only use data from MCP tool
 - Present hotels clearly and ask for user's choice
@@ -352,7 +404,7 @@ check_availability_agent = Agent[SeaPayContext](
     model="gpt-4.1-mini",
     name="Check Hotel Availability",
     instructions=CHECK_AVAILABILITY_INSTRUCTIONS,
-    tools=[mcp, show_hotel_cards],  # Uses MCP and show_hotel_cards
+    tools=[mcp, show_hotel_cards, show_approval_request],  # Uses MCP, show_hotel_cards, and show_approval_request
     output_type=CheckAvailabilitySchema,
     model_settings=ModelSettings(store=True),
 )
@@ -364,21 +416,28 @@ You are a hotel reservation agent for SeaPay.
 
 Your workflow (diagram steps 3-4):
 1. Confirm the user's hotel choice and booking details
-2. Call the MCP tool `reserve` with:
+2. BEFORE calling the MCP tool, call `show_approval_request` with:
+   - title: "Proceed with reservation?"
+   - description: A clear description of what you're about to reserve (e.g., "I'm about to reserve [hotelName] for [checkIn] to [checkOut] with [guests] guests")
+3. After showing the approval widget, wait for the user's response
+4. If the user approves (says "I approve", "yes", "proceed", etc.), immediately call the MCP tool `reserve` with:
    - hotelName: The exact hotel name the user chose
    - checkIn: Check-in date (YYYY-MM-DD)
    - checkOut: Check-out date (YYYY-MM-DD)
    - guests: Number of guests (as integer)
-3. The MCP `reserve` tool returns a JSON response with:
+5. If the user rejects (says "I reject", "no", "cancel", etc.), acknowledge their decision politely and end the conversation (e.g., "I understand. If you change your mind, feel free to ask me to help with a reservation.")
+6. The MCP `reserve` tool returns a JSON response with:
    - `success`: boolean
    - `status`: HTTP status code (200 for success, 402 for payment required)
    - `body`: the actual API response data
-4. Handle the response:
+7. Handle the response:
    - If status 200: Parse `body` and show reservation confirmation (reservationId, hotel, dates, guests, totalPrice)
    - If status 402: Parse `body` to extract payment details (amount, currency, network, instructions) and inform the user that payment is required
-5. The amount should devided by 1000000000 to get the amount in USDC, the currency always be USDC, the network always be base-sepolia
+8. The amount should devided by 1000000000 to get the amount in USDC, the currency always be USDC, the network always be base-sepolia
 
 Rules:
+- ALWAYS call `show_approval_request` before calling MCP `reserve`
+- If user rejects, acknowledge and end the conversation gracefully
 - ALWAYS use the MCP `reserve` tool (never make direct API calls)
 - Parse the response structure correctly (success, status, body)
 - For 402 responses, clearly explain payment requirements
@@ -388,7 +447,7 @@ reserve_agent = Agent[SeaPayContext](
     model="gpt-4.1-mini",
     name="Reserve Hotel",
     instructions=RESERVE_INSTRUCTIONS,
-    tools=[mcp],  # Uses MCP reserve tool
+    tools=[mcp, show_approval_request],  # Uses MCP reserve tool and show_approval_request
     model_settings=ModelSettings(store=True),
 )
 
@@ -399,17 +458,29 @@ You are a payment handler for SeaPay hotel reservations.
 
 Your workflow (diagram steps 5-9):
 1. You receive payment details from a previous 402 response (amount, currency, network, instructions), the amount should devided by 1000000000 to get the amount in USDC, the currency always be USDC, the network always be base-sepolia
-2. The user has confirmed they want to proceed with payment
-3. Call the `make_payment` tool with the booking details:
-   - hotelName: The exact hotel name
-   - checkIn: Check-in date (YYYY-MM-DD)
-   - checkOut: Check-out date (YYYY-MM-DD)
-   - guests: Number of guests (as integer)
-4. The `make_payment` tool automatically handles payment via x402
-5. If successful: Show final reservation confirmation with reservationId, hotel, dates, guests, totalPrice
-6. If error: Explain what went wrong and next steps
+2. BEFORE calling the `make_payment` tool, call `show_approval_request` with:
+   - title: "Proceed with payment?"
+   - description: A clear description of the payment (e.g., "I'm about to process payment of [amount] USDC for [hotelName] reservation from [checkIn] to [checkOut]")
+3. After showing the approval widget, wait for the user's response
+4. If the user approves (says "I approve", "yes", "proceed", etc.):
+   a. Immediately call the `make_payment` tool with the booking details:
+      - hotelName: The exact hotel name
+      - checkIn: Check-in date (YYYY-MM-DD)
+      - checkOut: Check-out date (YYYY-MM-DD)
+      - guests: Number of guests (as integer)
+   b. The `make_payment` tool automatically handles payment via x402
+   c. After the tool completes, show the result:
+      - If successful: Display the reservation confirmation with reservationId, hotel, dates, guests, totalPrice
+      - If error: Explain what went wrong and next steps
+   d. ALWAYS thank the user after showing the result (e.g., "Thank you for using SeaPay! Your reservation has been confirmed." or "Thank you for your patience. Unfortunately, the payment could not be processed.")
+5. If the user rejects (says "I reject", "no", "cancel", etc.), acknowledge their decision politely and end the conversation (e.g., "I understand. If you change your mind, feel free to proceed with the payment later.")
 
 Rules:
+- ALWAYS call `show_approval_request` before calling `make_payment`
+- After user approval, IMMEDIATELY call `make_payment` tool
+- After `make_payment` completes, ALWAYS show the result (success or error details)
+- ALWAYS thank the user after showing the payment result
+- If user rejects, acknowledge and end the conversation gracefully
 - ALWAYS use the `make_payment` tool (it handles x402 payments automatically)
 - Use the same booking details as the original reservation attempt
 - The tool handles payment automatically, so you don't need to process payments manually
@@ -420,7 +491,7 @@ reserve_payment_agent = Agent[SeaPayContext](
     model="gpt-4.1-mini",
     name="Reserve with Payment",
     instructions=RESERVE_PAYMENT_INSTRUCTIONS,
-    tools=[make_payment],  # Uses make_payment tool for automatic x402 payment handling
+    tools=[make_payment, show_approval_request],  # Uses make_payment tool and show_approval_request
     model_settings=ModelSettings(store=True),
 )
 
@@ -445,22 +516,42 @@ Your workflow matches the SeaPay booking diagram:
 
 Use the appropriate specialized agents for each step, or handle the workflow directly using MCP tools.
 
+Approval flow:
+- Before calling MCP tools (check_availability, reserve), ALWAYS call `show_approval_request` first to ask the user if they want to proceed
+- Use descriptive titles and descriptions explaining what action you're about to take
+- Examples:
+  - Before checking availability: title="Proceed with hotel search?", description="I'm about to search for available hotels in [destination] for [dates]"
+  - Before making a reservation: title="Proceed with reservation?", description="I'm about to reserve [hotelName] for [dates] with [guests] guests"
+- After showing the approval widget, wait for the user's response
+- If the user approves (says "I approve", "yes", "proceed", etc.), immediately proceed with the MCP tool call and show the results
+- If the user rejects (says "I reject", "no", "cancel", etc.), acknowledge their decision politely and end the conversation (e.g., "I understand. If you change your mind, feel free to ask me to search again.")
+- The approval widget will show approve/reject buttons that the user can click, which will send approval/rejection messages
+
 Payment confirmation flow:
 - When a reservation requires payment (HTTP 402 response), inform the user about the payment requirement
-- Wait for the user to confirm they want to proceed with payment
-- If the user confirms (says "yes", "confirm", "proceed", etc.), call the `make_payment` tool with the booking details:
-  - hotelName: The exact hotel name
-  - checkIn: Check-in date (YYYY-MM-DD)
-  - checkOut: Check-out date (YYYY-MM-DD)
-  - guests: Number of guests (as integer)
-- The `make_payment` tool automatically handles payment via x402
-- After successful payment, show the reservation confirmation
+- BEFORE calling the `make_payment` tool, ALWAYS call `show_approval_request` with:
+  - title: "Proceed with payment?"
+  - description: A clear description of the payment (e.g., "I'm about to process payment of [amount] USDC for [hotelName] reservation from [checkIn] to [checkOut]")
+- After showing the approval widget, wait for the user's response
+- If the user approves (says "I approve", "yes", "proceed", etc.):
+  a. Immediately call the `make_payment` tool with the booking details:
+     - hotelName: The exact hotel name
+     - checkIn: Check-in date (YYYY-MM-DD)
+     - checkOut: Check-out date (YYYY-MM-DD)
+     - guests: Number of guests (as integer)
+  b. The `make_payment` tool automatically handles payment via x402
+  c. After the tool completes, show the result:
+     - If successful: Display the reservation confirmation with reservationId, hotel, dates, guests, totalPrice
+     - If error: Explain what went wrong and next steps
+  d. ALWAYS thank the user after showing the result (e.g., "Thank you for using SeaPay! Your reservation has been confirmed.")
+- If the user rejects (says "I reject", "no", "cancel", etc.), acknowledge their decision politely and end the conversation (e.g., "I understand. If you change your mind, feel free to proceed with the payment later.")
 
 General rules:
+- ALWAYS call `show_approval_request` before MCP tool calls (check_availability, reserve) and before `make_payment` tool calls
 - ALWAYS use MCP tool `check_availability` for hotel availability
 - ALWAYS use MCP tool `reserve` for making reservations (never direct API calls)
 - ALWAYS call `show_hotel_cards` immediately after receiving hotel results
-- When payment is required and user confirms, ALWAYS use the `make_payment` tool
+- When payment is required, ALWAYS show approval widget before calling `make_payment` tool
 - NEVER make up hotels, locations, dates, prices, or availability
 - Keep responses short, friendly, and focused on the next action
 """
@@ -471,7 +562,7 @@ seapay_agent = Agent[SeaPayContext](
     model="gpt-4.1-mini",
     name="SeaPay Hotel Booking Agent",
     instructions=SEAPAY_INSTRUCTIONS,
-    tools=[mcp, show_hotel_cards, make_payment],  # Uses shared MCP tool, show_hotel_cards, and make_payment
+    tools=[mcp, show_hotel_cards, make_payment, show_approval_request],  # Uses shared MCP tool, show_hotel_cards, make_payment, and show_approval_request
     model_settings=ModelSettings(
         store=True,
     ),

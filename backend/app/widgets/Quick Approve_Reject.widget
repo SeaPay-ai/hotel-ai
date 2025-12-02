@@ -1,0 +1,68 @@
+{
+  "version": "1.0",
+  "name": "Quick Approve/Reject",
+  "template": "{\"type\":\"Card\",\"size\":\"sm\",\"confirm\":{\"label\":\"Approve\",\"action\":{\"type\":\"request.approve\"}},\"cancel\":{\"label\":\"Reject\",\"action\":{\"type\":\"request.reject\"}},\"children\":[{\"type\":\"Col\",\"align\":\"center\",\"gap\":2,\"padding\":{\"y\":3},\"children\":[{\"type\":\"Icon\",\"name\":\"check-circle\",\"size\":\"2xl\",\"color\":\"success\"},{\"type\":\"Title\",\"value\":{{ (title) | tojson }},\"size\":\"md\"},{\"type\":\"Text\",\"value\":{{ (description) | tojson }},\"color\":\"secondary\",\"maxLines\":2}]}]}",
+  "jsonSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "title": {
+        "type": "string"
+      },
+      "description": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "title",
+      "description"
+    ],
+    "additionalProperties": false
+  },
+  "outputJsonPreview": {
+    "type": "Card",
+    "size": "sm",
+    "confirm": {
+      "label": "Approve",
+      "action": {
+        "type": "request.approve"
+      }
+    },
+    "cancel": {
+      "label": "Reject",
+      "action": {
+        "type": "request.reject"
+      }
+    },
+    "children": [
+      {
+        "type": "Col",
+        "align": "center",
+        "gap": 2,
+        "padding": {
+          "y": 3
+        },
+        "children": [
+          {
+            "type": "Icon",
+            "name": "check-circle",
+            "size": "2xl",
+            "color": "success"
+          },
+          {
+            "type": "Title",
+            "value": "Approve this?",
+            "size": "md"
+          },
+          {
+            "type": "Text",
+            "value": "Next step Agent is going to do",
+            "color": "secondary",
+            "maxLines": 2
+          }
+        ]
+      }
+    ]
+  },
+  "encodedWidget": "eyJpZCI6IjExM2Y2YmM4LTg5NzItNGU2Ny1hYmMyLTkzMDA5ZTVjNzRjYiIsIm5hbWUiOiJRdWljayBBcHByb3ZlL1JlamVjdCIsInZpZXciOiI8Q2FyZFxuICBzaXplPVwic21cIlxuICBjb25maXJtPXt7IGxhYmVsOiBcIkFwcHJvdmVcIiwgYWN0aW9uOiB7IHR5cGU6IFwicmVxdWVzdC5hcHByb3ZlXCIgfSB9fVxuICBjYW5jZWw9e3sgbGFiZWw6IFwiUmVqZWN0XCIsIGFjdGlvbjogeyB0eXBlOiBcInJlcXVlc3QucmVqZWN0XCIgfSB9fVxuPlxuICA8Q29sIGFsaWduPVwiY2VudGVyXCIgZ2FwPXsyfSBwYWRkaW5nPXt7IHk6IDMgfX0-XG4gICAgPEljb24gbmFtZT1cImNoZWNrLWNpcmNsZVwiIHNpemU9XCIyeGxcIiBjb2xvcj1cInN1Y2Nlc3NcIiAvPlxuICAgIDxUaXRsZSB2YWx1ZT17dGl0bGV9IHNpemU9XCJtZFwiIC8-XG4gICAgPFRleHQgdmFsdWU9e2Rlc2NyaXB0aW9ufSBjb2xvcj1cInNlY29uZGFyeVwiIG1heExpbmVzPXsyfSAvPlxuICA8L0NvbD5cbjwvQ2FyZD4iLCJkZWZhdWx0U3RhdGUiOnsidGl0bGUiOiJBcHByb3ZlIHRoaXM_IiwiZGVzY3JpcHRpb24iOiJOZXh0IHN0ZXAgQWdlbnQgaXMgZ29pbmcgdG8gZG8ifSwic3RhdGVzIjpbXSwic2NoZW1hIjoiaW1wb3J0IHsgeiB9IGZyb20gXCJ6b2RcIlxuXG5jb25zdCBXaWRnZXRTdGF0ZSA9IHouc3RyaWN0T2JqZWN0KHtcbiAgdGl0bGU6IHouc3RyaW5nKCksXG4gIGRlc2NyaXB0aW9uOiB6LnN0cmluZygpLFxufSlcblxuZXhwb3J0IGRlZmF1bHQgV2lkZ2V0U3RhdGUiLCJqc29uU2NoZW1hIjp7fSwic2NoZW1hTW9kZSI6InpvZCIsInNjaGVtYVZhbGlkaXR5IjoidmFsaWQiLCJ2aWV3VmFsaWRpdHkiOiJ2YWxpZCIsImRlZmF1bHRTdGF0ZVZhbGlkaXR5IjoidmFsaWQifQ"
+}

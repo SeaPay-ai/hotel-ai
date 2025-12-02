@@ -125,6 +125,21 @@ class SeaPayServer(ChatKitServer[RequestContext]):
             async for event in self._process_user_message(thread, user_message, context):
                 yield event
             return
+        
+        # Handle approval/rejection actions from the approval widget
+        elif action_type == "request.approve":
+            # User approved the action - continue the agent flow
+            user_message = "I approve. Please proceed."
+            async for event in self._process_user_message(thread, user_message, context):
+                yield event
+            return
+        
+        elif action_type == "request.reject":
+            # User rejected the action - inform the agent to end gracefully
+            user_message = "I reject. Please cancel that action."
+            async for event in self._process_user_message(thread, user_message, context):
+                yield event
+            return
 
     async def to_message_content(self, _input: Any) -> Any:
         """File attachments are not supported."""
@@ -163,6 +178,14 @@ class SeaPayServer(ChatKitServer[RequestContext]):
 
         # Save the message to the store
         await self.store.add_thread_item(thread.id, user_item, context)
+
+        # Yield the user message event so it appears in the chat
+        event_adapter = TypeAdapter(ThreadStreamEvent)
+        user_event = event_adapter.validate_python({
+            "type": "thread.item.added",
+            "item": user_item,
+        })
+        yield user_event
 
         # Process the message through the agent
         async for event in self.respond(thread, user_item, context):
