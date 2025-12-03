@@ -26,6 +26,10 @@ from .memory_store import MemoryStore
 from .request_context import RequestContext
 from .thread_item_converter import SeaPayThreadItemConverter
 
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class SeaPayServer(ChatKitServer[RequestContext]):
     """ChatKit server wired up with the SeaPay hotel booking assistant."""
