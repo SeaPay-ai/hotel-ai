@@ -35,11 +35,17 @@ export const createMcpServer = (): McpServer => {
       inputSchema: z.object({
         checkIn: z.string().describe("Check-in date (YYYY-MM-DD)."),
         checkOut: z.string().describe("Check-out date (YYYY-MM-DD)."),
+        destination: z.string().describe("Destination city or location."),
         guests: z.number().describe("Total number of guests."),
       }),
     },
-    async ({ checkIn, checkOut, guests }) => {
-      const availableHotels = checkAvailability(checkIn, checkOut, guests);
+    async ({ checkIn, checkOut, destination, guests }) => {
+      const availableHotels = checkAvailability(
+        checkIn,
+        checkOut,
+        destination,
+        guests
+      );
 
       return {
         content: [

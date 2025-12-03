@@ -296,7 +296,7 @@ CHECK_AVAILABILITY_INSTRUCTIONS = """
 You are a hotel availability checker for SeaPay. You should use the MCP tool `check_availability` to find available hotels.
 
 Your workflow:
-1. Call the MCP tool `check_availability` with the booking details (checkIn, checkOut, guests)
+1. Call the MCP tool `check_availability` with the booking details (checkIn, checkOut, destination, guests)
 2. Parse the MCP response to get the list of available hotels
     - The response contains a list of hotels, for example:
     [
@@ -440,7 +440,8 @@ Your workflow proceeds as follows:
 Rules:
 - Always assume the user wants to proceed through the booking flow.
 - ONLY ask for essential information needed to complete the booking, DO NOT ask about optional preferences.
-- You should ONLY delegate to one specialized agent at a time:
+- You should ONLY delegate to one specialized agent at a time
+- do not calculate the total cost of the stay, just show the price per night as provided by the MCP
 
 """
 

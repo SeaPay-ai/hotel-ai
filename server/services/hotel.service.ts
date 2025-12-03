@@ -25,6 +25,7 @@ import type { AvailableHotel, Reservation } from "../types/index.js";
 export const checkAvailability = (
   checkIn: string,
   checkOut: string,
+  destination: string,
   guests: number
 ): AvailableHotel[] => {
   // In a real application, we would query a database using these parameters
@@ -36,7 +37,11 @@ export const checkAvailability = (
         (1000 * 60 * 60 * 24)
     ) || 1;
 
-  return HOTELS.map((hotel): AvailableHotel => ({
+  const lowerCaseDestination = destination.toLowerCase();
+
+  return HOTELS.filter(hotel =>
+    hotel.location.toLowerCase().includes(lowerCaseDestination)
+  ).map((hotel): AvailableHotel => ({
     hotelName: hotel.hotelName,
     location: hotel.location,
     roomType: hotel.roomType,

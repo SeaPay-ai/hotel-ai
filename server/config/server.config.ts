@@ -69,8 +69,15 @@ export const NETWORK = "base-sepolia" as const;
  */
 const HOTEL_PRICES: HotelPrices = {
   "Grand Plaza Hotel": 0.01,
-  "Seaside Resort": 0.02,
-  "Mountain Retreat": 0.03,
+  "Oceanview Resort": 0.02,
+  "Urban Loft Chicago": 0.03,
+  "Luxury Suites NYC": 0.04,
+  "Midtown Grand Hotel": 0.05,
+  "Brooklyn Boutique": 0.01,
+  "Windy City Inn": 0.02,
+  "Lakeside Hotel Chicago": 0.03,
+  "Hollywood Hills Hotel": 0.04,
+  "LA Downtown Suites": 0.05,
 };
 
 /**

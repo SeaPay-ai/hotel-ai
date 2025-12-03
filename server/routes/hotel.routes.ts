@@ -28,13 +28,13 @@ const router = express.Router();
  * GET /api/check-availability?checkIn=2024-01-15&checkOut=2024-01-20&guests=2
  */
 router.get("/check-availability", (req: Request, res: Response): void => {
-  const { checkIn, checkOut, guests } = req.query;
+  const { checkIn, checkOut, destination, guests } = req.query;
 
   // Validate required query parameters
-  if (!checkIn || !checkOut || !guests) {
+  if (!checkIn || !checkOut || !destination || !guests) {
     res.status(400).json({
       error:
-        "Missing required query parameters: checkIn, checkOut, guests",
+        "Missing required query parameters: checkIn, checkOut, destination, guests",
     });
     return;
   }
@@ -45,6 +45,7 @@ router.get("/check-availability", (req: Request, res: Response): void => {
     const availableHotels = checkAvailability(
       checkIn as string,
       checkOut as string,
+      destination as string,
       guestsNum
     );
 
