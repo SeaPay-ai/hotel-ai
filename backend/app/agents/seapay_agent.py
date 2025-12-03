@@ -327,6 +327,7 @@ Rules:
 - ALWAYS call `show_hotel_cards` IMMEDIATELY after receiving hotel results from MCP
 - NEVER invent hotels, prices, or availability - only use data from MCP tool
 - Present hotels clearly and ask for user's choice
+- Do not modify the price or calculate the total cost of the stay, just show the price per night as provided by the MCP
 """
 
 check_availability_agent = Agent[SeaPayContext](
