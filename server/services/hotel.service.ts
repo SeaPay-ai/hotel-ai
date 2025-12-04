@@ -11,6 +11,10 @@
 import { HOTELS } from "../config/hotels.data.js";
 import type { AvailableHotel, Reservation } from "../types/index.js";
 
+const round6 = (n: number): number => {
+  return Math.round(n * 1e6) / 1e6;
+};
+
 /**
  * Check hotel availability for given dates and guest count
  *
@@ -45,7 +49,7 @@ export const checkAvailability = (
     hotelName: hotel.hotelName,
     location: hotel.location,
     roomType: hotel.roomType,
-    price: hotel.price * nights,
+    price: round6(hotel.price * nights),
     imageUrl: hotel.imageUrl,
     dates: `${checkIn} to ${checkOut}`,
     guests,
