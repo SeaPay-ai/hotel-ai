@@ -21,7 +21,7 @@ from chatkit.types import (
 )
 from pydantic import TypeAdapter
 
-from .agents.seapay_agent import SeaPayContext, seapay_agent
+from .agents.seapay_agent import SeaPayContext, seapay_agent, approval_event, approval_result
 from .memory_store import MemoryStore
 from .request_context import RequestContext
 from .thread_item_converter import SeaPayThreadItemConverter
@@ -132,17 +132,13 @@ class SeaPayServer(ChatKitServer[RequestContext]):
         
         # Handle approval/rejection actions from the approval widget
         elif action_type == "request.approve":
-            # User approved the action - continue the agent flow
-            user_message = "I approve. Please proceed."
-            async for event in self._process_user_message(thread, user_message, context):
-                yield event
+            approval_event.set()
+            approval_result = True
             return
         
         elif action_type == "request.reject":
-            # User rejected the action - inform the agent to end gracefully
-            user_message = "I reject. Please cancel that action."
-            async for event in self._process_user_message(thread, user_message, context):
-                yield event
+            approval_event.set()
+            approval_result = False
             return
 
     async def to_message_content(self, _input: Any) -> Any:

@@ -12,10 +12,11 @@ This agent provides a hotel booking workflow that talks to the SeaPay MCP server
 
 from __future__ import annotations
 
+import asyncio
 import logging
-from typing import Annotated, Any
-
-from agents import Agent, HostedMCPTool, ModelSettings, RunContextWrapper, function_tool, handoff
+from typing import Annotated, Any, Callable, TypedDict, NotRequired, Awaitable
+from dataclasses import dataclass
+from agents import Agent, HostedMCPTool, ModelSettings, RunContextWrapper, function_tool, handoff, MCPToolApprovalFunctionResult, MCPToolApprovalRequest
 from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
 from chatkit.agents import AgentContext
 from pydantic import BaseModel, ConfigDict, Field
@@ -29,8 +30,11 @@ from ..widgets.hotel_card_widget import build_hotel_card_widget
 from ..widgets.quick_approve_reject_widget import build_approval_widget
 
 logging.basicConfig(level=logging.INFO)
+
 logger = logging.getLogger(__name__)
 
+approval_event = asyncio.Event()
+approval_result = False
 
 class SeaPayContext(AgentContext):
     """Agent context for the SeaPay hotel booking agent."""
@@ -54,6 +58,42 @@ class HotelData(BaseModel):
     imageUrl: str | None = None
 
 
+# MCPToolApprovalFunction = Callable[
+#     [MCPToolApprovalRequest],
+#     Awaitable[MCPToolApprovalFunctionResult],
+# ]
+
+async def custom_mcp_approval_function(
+    request: MCPToolApprovalRequest,
+) -> MCPToolApprovalFunctionResult:
+    """
+    Handles MCP tool approval requests.
+    This function streams a message to the user informing them about the tool call,
+    but it does not block for a user's interactive response within the same turn.
+    It automatically approves the tool call, assuming higher-level agents (e.g., supervisor)
+    have already handled the interactive natural language approval with the user.
+    """
+    tool_name = request.data.name
+    tool_args = request.data.arguments
+    logger.info(request.ctx_wrapper.context)
+    ctx = request.ctx_wrapper  # Restoring the ctx variable
+    # Inform the user about the tool call. This does not await user input.
+    
+    widget = build_approval_widget(title=tool_name, description=str(tool_args))
+        
+    # Stream the widget to the chat
+    await ctx.context.stream_widget(widget, copy_text=f"{tool_name}: {str(tool_args)}")
+
+    logger.info(
+        "MCP Tool Approval Requested: Tool '%s' with arguments: %s",
+        tool_name,
+        tool_args,
+    )
+
+    await approval_event.wait()
+
+    return MCPToolApprovalFunctionResult(approve=approval_result)
+
 # Shared MCP tool configuration for all agents
 # All agents use this single MCP connection to the SeaPay server
 mcp = HostedMCPTool(
@@ -66,10 +106,10 @@ mcp = HostedMCPTool(
             "check_availability",
             "reserve",
         ],
-        # We handle approval manually via the show_approval_request widget,
-        # so we don't need the MCP framework's built-in approval system.
-        "require_approval": "never",
-    }
+        # We now use the custom_mcp_approval_function
+        "require_approval": "always",
+    },
+    on_approval_request=custom_mcp_approval_function
 )
 
 @function_tool(
